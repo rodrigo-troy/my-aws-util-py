@@ -4,6 +4,7 @@ from tqdm import tqdm
 from botocore.exceptions import BotoCoreError, ClientError
 from log_config import configure_logging
 
+
 class S3BucketManager:
     def __init__(self, aws_access_key_id, aws_secret_access_key, region_name):
         self.s3_client = self._initialize_client(aws_access_key_id, aws_secret_access_key, region_name)
@@ -71,13 +72,13 @@ if __name__ == "__main__":
     aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
     region = os.getenv('AWS_REGION')
     bucket_name = os.getenv('BUCKET_NAME')
+
+    if not all([aws_access_key_id, aws_secret_access_key, region, bucket_name]):
+        raise EnvironmentError(
+            "Please set the AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, and BUCKET_NAME environment variables"
+        )
+
     directory_path = os.getcwd()
-
-    if aws_access_key_id is None or aws_secret_access_key is None or region is None or bucket_name is None:
-        print(
-            "Please set the AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION and BUCKET_NAME environment variables")
-        exit(1)
-
     manager = S3BucketManager(aws_access_key_id, aws_secret_access_key, region)
     manager.download_bucket_contents(bucket_name)
     manager.upload_directory_to_s3(bucket_name, directory_path)
