@@ -22,7 +22,7 @@ class S3BucketManager:
             region_name=region_name_value
         )
 
-    def download_bucket_contents(self, bucket_name, directory_path):
+    def download_bucket_contents(self, bucket_name, directory_path, extension):
         self.logger.info(f"Downloading contents of bucket {bucket_name}")
 
         if not os.path.exists(directory_path):
@@ -34,9 +34,10 @@ class S3BucketManager:
             if 'Contents' in bucket_objects:
                 for obj in tqdm(bucket_objects['Contents'], desc="Downloading"):
                     file_name = obj['Key']
-                    file_path = os.path.join(directory_path, file_name)
-                    self.s3_client.download_file(bucket_name, file_name, file_path)
-                    self.logger.info(f"Downloaded {file_name} to {file_path}")
+
+                    if file_name.endswith(extension):
+                        file_path = os.path.join(directory_path, file_name)
+                        self.s3_client.download_file(bucket_name, file_name, file_path)
         except BotoCoreError as e:
             self.logger.error(f"An AWS SDK error occurred: {e}")
         except ClientError as e:
@@ -68,7 +69,7 @@ class S3BucketManager:
         except ClientError as e:
             self.logger.error(f"An AWS client error occurred: {e}")
 
-    def clean_bucket(self, bucket_name):
+    def clean_bucket(self, bucket_name, extension):
         self.logger.info(f"Cleaning bucket {bucket_name}")
 
         try:
@@ -78,8 +79,9 @@ class S3BucketManager:
             for page in pages:
                 if 'Contents' in page:
                     for obj in page['Contents']:
-                        self.s3_client.delete_object(Bucket=bucket_name, Key=obj['Key'])
-                        self.logger.info(f"Deleted {obj['Key']} from {bucket_name}")
+                        if obj['Key'].endswith(extension):
+                            self.s3_client.delete_object(Bucket=bucket_name, Key=obj['Key'])
+                            self.logger.info(f"Deleted {obj['Key']} from {bucket_name}")
         except BotoCoreError as e:
             self.logger.error(f"An AWS SDK error occurred: {e}")
         except ClientError as e:
@@ -115,9 +117,8 @@ if __name__ == "__main__":
     manager = S3BucketManager(aws_access_key_id, aws_secret_access_key, region)
 
     if args.command == 'upload':
-        manager.upload_directory_to_s3(bucket_name, args.directory)
+        manager.upload_directory_to_s3(bucket_name, args.directory, args.extension)
 
     if args.command == 'download':
-        manager.download_bucket_contents(bucket_name, args.directory)
-
-    manager.clean_bucket(bucket_name)
+        manager.download_bucket_contents(bucket_name, args.directory, args.extension)
+        manager.clean_bucket(bucket_name, args.extension)
